@@ -1,3 +1,9 @@
+'use client';
+import { useSession, signIn } from 'next-auth/react';
+import { useState, Suspense } from 'react';
+
+type CheckInStatus = 'idle' | 'looking-up' | 'checking-in' | 'success' | 'expired' | 'duplicate' | 'error';
+
 function CheckInContent() {
   const { data: session, status: authStatus } = useSession();
   const [codeInput, setCodeInput] = useState('');
@@ -77,7 +83,7 @@ function CheckInContent() {
     );
   }
 
-  // --- NEW: Giant Success Screen ---
+  // --- Giant Success Screen ---
   if (checkInStatus === 'success' || checkInStatus === 'duplicate') {
     return (
       <div className="flex flex-col items-center gap-6 w-full max-w-sm">
@@ -91,7 +97,7 @@ function CheckInContent() {
           </div>
           <a
             href="/dashboard"
-            className={`mt-4 w-full ${checkInStatus === 'success' ? 'bg-green-600 hover:bg-green-500' : 'bg-blue-600 hover:bg-blue-500'} text-white font-semibold py-3 rounded-xl transition-colors`}
+            className={`mt-4 w-full ${checkInStatus === 'success' ? 'bg-green-600 hover:bg-green-500' : 'bg-blue-600 hover:bg-blue-500'} text-white font-semibold py-3 rounded-xl transition-colors inline-block`}
           >
             View Dashboard
           </a>
@@ -160,6 +166,23 @@ function CheckInContent() {
       <p className="text-slate-600 text-xs">
         Signed in as <span className="text-slate-400 font-mono">{(session?.user as any)?.istId}</span>
       </p>
+    </div>
+  );
+}
+
+// THIS IS THE CRITICAL EXPORT THAT WAS MISSING!
+export default function CheckInPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex flex-col items-center justify-center p-4">
+      <div className="mb-8 text-center">
+        <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold mx-auto mb-3">
+          IST
+        </div>
+        <p className="text-slate-400 text-sm">Attendance Check-In</p>
+      </div>
+      <Suspense fallback={<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400" />}>
+        <CheckInContent />
+      </Suspense>
     </div>
   );
 }
