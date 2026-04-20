@@ -1,9 +1,3 @@
-'use client';
-import { useSession, signIn } from 'next-auth/react';
-import { useState, Suspense } from 'react';
-
-type CheckInStatus = 'idle' | 'looking-up' | 'checking-in' | 'success' | 'expired' | 'duplicate' | 'error';
-
 function CheckInContent() {
   const { data: session, status: authStatus } = useSession();
   const [codeInput, setCodeInput] = useState('');
@@ -11,13 +5,11 @@ function CheckInContent() {
   const [message, setMessage] = useState('');
 
   const handleSubmit = async () => {
-    // Basic validation
     if (!codeInput.trim() || codeInput.trim().length < 6) return;
     setCheckInStatus('looking-up');
     setMessage('');
 
     try {
-      // Step 1: Exchange the short code for the actual JWT
       const lookupRes = await fetch('/api/lookup-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -31,7 +23,6 @@ function CheckInContent() {
         return;
       }
 
-      // Step 2: Use the JWT to securely check in
       setCheckInStatus('checking-in');
       const checkInRes = await fetch('/api/check-in', {
         method: 'POST',
@@ -43,7 +34,6 @@ function CheckInContent() {
       if (checkInRes.ok) {
         setCheckInStatus('success');
         setMessage(checkInData.message);
-        setCodeInput(''); // Clear the input on success
       } else if (checkInRes.status === 410) {
         setCheckInStatus('expired');
         setMessage(checkInData.error);
@@ -60,7 +50,6 @@ function CheckInContent() {
     }
   };
 
-  // Loading State
   if (authStatus === 'loading') {
     return (
       <div className="flex flex-col items-center gap-4">
@@ -70,7 +59,6 @@ function CheckInContent() {
     );
   }
 
-  // Not Logged In State
   if (authStatus === 'unauthenticated') {
     return (
       <div className="flex flex-col items-center gap-6 text-center bg-white/5 border border-white/10 rounded-2xl p-10 max-w-sm w-full shadow-xl">
@@ -89,9 +77,31 @@ function CheckInContent() {
     );
   }
 
+  // --- NEW: Giant Success Screen ---
+  if (checkInStatus === 'success' || checkInStatus === 'duplicate') {
+    return (
+      <div className="flex flex-col items-center gap-6 w-full max-w-sm">
+        <div className={`w-full ${checkInStatus === 'success' ? 'bg-green-900/20 border-green-500/30' : 'bg-blue-900/20 border-blue-500/30'} border rounded-2xl p-10 flex flex-col items-center text-center gap-5 shadow-xl`}>
+          <div className="text-6xl">{checkInStatus === 'success' ? '✅' : '👍'}</div>
+          <div>
+            <h2 className={`${checkInStatus === 'success' ? 'text-green-400' : 'text-blue-400'} text-2xl font-bold`}>
+              {checkInStatus === 'success' ? "You're Checked In!" : "Already Checked In"}
+            </h2>
+            <p className="text-slate-300 mt-2 text-sm">{message}</p>
+          </div>
+          <a
+            href="/dashboard"
+            className={`mt-4 w-full ${checkInStatus === 'success' ? 'bg-green-600 hover:bg-green-500' : 'bg-blue-600 hover:bg-blue-500'} text-white font-semibold py-3 rounded-xl transition-colors`}
+          >
+            View Dashboard
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   const isSubmitting = checkInStatus === 'looking-up' || checkInStatus === 'checking-in';
 
-  // The actual Code Entry UI
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-sm">
       <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-8 flex flex-col gap-5 shadow-xl">
@@ -106,7 +116,6 @@ function CheckInContent() {
           type="text"
           value={codeInput}
           onChange={(e) => {
-            // Force uppercase and remove non-alphanumeric characters
             const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
             setCodeInput(val);
             if (checkInStatus !== 'idle') {
@@ -120,20 +129,7 @@ function CheckInContent() {
           className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-4 text-white text-center text-3xl font-mono tracking-[0.3em] placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:bg-white/15 disabled:opacity-50 transition-colors uppercase"
           autoFocus
           autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
         />
-
-        <div className="flex justify-center gap-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                i < codeInput.length ? 'bg-blue-400' : 'bg-slate-700'
-              }`}
-            />
-          ))}
-        </div>
 
         <button
           onClick={handleSubmit}
@@ -143,7 +139,7 @@ function CheckInContent() {
           {isSubmitting ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-              {checkInStatus === 'looking-up' ? 'Validating code...' : 'Checking in...'}
+              {checkInStatus === 'looking-up' ? 'Validating...' : 'Checking in...'}
             </>
           ) : (
             'Check In'
@@ -152,25 +148,10 @@ function CheckInContent() {
       </div>
 
       {checkInStatus !== 'idle' && !isSubmitting && message && (
-        <div className={`w-full rounded-2xl p-5 flex items-start gap-4 border ${
-          checkInStatus === 'success'
-            ? 'bg-green-600/10 border-green-500/30'
-            : checkInStatus === 'duplicate'
-            ? 'bg-blue-600/10 border-blue-500/30'
-            : 'bg-red-600/10 border-red-500/30'
-        }`}>
-          <span className="text-2xl shrink-0">
-            {checkInStatus === 'success' ? '✅' :
-             checkInStatus === 'duplicate' ? '👍' : '⚠️'}
-          </span>
+        <div className="w-full rounded-2xl p-5 flex items-start gap-4 border bg-red-600/10 border-red-500/30">
+          <span className="text-2xl shrink-0">⚠️</span>
           <div>
-            <p className={`font-semibold text-sm ${
-              checkInStatus === 'success' ? 'text-green-300' :
-              checkInStatus === 'duplicate' ? 'text-blue-300' : 'text-red-300'
-            }`}>
-              {checkInStatus === 'success' ? 'Attendance recorded!' :
-               checkInStatus === 'duplicate' ? 'Already checked in' : 'Check-in failed'}
-            </p>
+            <p className="font-semibold text-sm text-red-300">Check-in failed</p>
             <p className="text-slate-400 text-xs mt-1">{message}</p>
           </div>
         </div>
@@ -179,22 +160,6 @@ function CheckInContent() {
       <p className="text-slate-600 text-xs">
         Signed in as <span className="text-slate-400 font-mono">{(session?.user as any)?.istId}</span>
       </p>
-    </div>
-  );
-}
-
-export default function CheckInPage() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex flex-col items-center justify-center p-4">
-      <div className="mb-8 text-center">
-        <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold mx-auto mb-3">
-          IST
-        </div>
-        <p className="text-slate-400 text-sm">Attendance Check-In</p>
-      </div>
-      <Suspense fallback={<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400" />}>
-        <CheckInContent />
-      </Suspense>
     </div>
   );
 }

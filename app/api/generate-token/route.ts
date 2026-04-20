@@ -55,11 +55,17 @@ export async function POST(req: NextRequest) {
   );
 
   // Save the code and token to Supabase for 15 seconds
-  await supabaseAdmin.from('active_codes').upsert({
+  const { error: dbError } = await supabaseAdmin.from('active_codes').upsert({
     code: code,
     token: token,
     expires_at: new Date(Date.now() + 15000).toISOString()
   });
+
+  // If Supabase rejects it, crash the request and log the error!
+  if (dbError) {
+    console.error("Supabase Insert Error:", dbError);
+    return NextResponse.json({ error: `DB Error: ${dbError.message}` }, { status: 500 });
+  }
 
   return NextResponse.json({ token, code });
 }
