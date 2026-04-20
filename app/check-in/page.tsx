@@ -11,11 +11,13 @@ function CheckInContent() {
   const [message, setMessage] = useState('');
 
   const handleSubmit = async () => {
+    // Basic validation
     if (!codeInput.trim() || codeInput.trim().length < 6) return;
     setCheckInStatus('looking-up');
     setMessage('');
 
     try {
+      // Step 1: Exchange the short code for the actual JWT
       const lookupRes = await fetch('/api/lookup-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -29,6 +31,7 @@ function CheckInContent() {
         return;
       }
 
+      // Step 2: Use the JWT to securely check in
       setCheckInStatus('checking-in');
       const checkInRes = await fetch('/api/check-in', {
         method: 'POST',
@@ -40,7 +43,7 @@ function CheckInContent() {
       if (checkInRes.ok) {
         setCheckInStatus('success');
         setMessage(checkInData.message);
-        setCodeInput('');
+        setCodeInput(''); // Clear the input on success
       } else if (checkInRes.status === 410) {
         setCheckInStatus('expired');
         setMessage(checkInData.error);
@@ -57,6 +60,7 @@ function CheckInContent() {
     }
   };
 
+  // Loading State
   if (authStatus === 'loading') {
     return (
       <div className="flex flex-col items-center gap-4">
@@ -66,6 +70,7 @@ function CheckInContent() {
     );
   }
 
+  // Not Logged In State
   if (authStatus === 'unauthenticated') {
     return (
       <div className="flex flex-col items-center gap-6 text-center bg-white/5 border border-white/10 rounded-2xl p-10 max-w-sm w-full shadow-xl">
@@ -86,6 +91,7 @@ function CheckInContent() {
 
   const isSubmitting = checkInStatus === 'looking-up' || checkInStatus === 'checking-in';
 
+  // The actual Code Entry UI
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-sm">
       <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-8 flex flex-col gap-5 shadow-xl">
@@ -100,6 +106,7 @@ function CheckInContent() {
           type="text"
           value={codeInput}
           onChange={(e) => {
+            // Force uppercase and remove non-alphanumeric characters
             const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
             setCodeInput(val);
             if (checkInStatus !== 'idle') {

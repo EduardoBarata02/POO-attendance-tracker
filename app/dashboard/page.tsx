@@ -2,6 +2,7 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Link from 'next/link'; // Added for fast client-side navigation
 
 type AttendanceRecord = {
   id: string;
@@ -77,8 +78,27 @@ export default function StudentDashboard() {
           </div>
         </div>
 
+        {/* NEW: Action Card for Code Entry */}
+        <div className="bg-blue-900/20 border border-blue-500/20 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between text-center sm:text-left gap-4 shadow-lg">
+          <div className="flex items-center gap-4 flex-col sm:flex-row">
+            <div className="text-4xl">⌨️</div>
+            <div>
+              <h2 className="text-white font-semibold text-lg">Ready for class?</h2>
+              <p className="text-slate-300 text-sm mt-1">
+                Check in using the 6-character code on the projector.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/check-in"
+            className="shrink-0 bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 px-6 rounded-xl transition-colors shadow-md text-center w-full sm:w-auto"
+          >
+            Enter Class Code
+          </Link>
+        </div>
+
         {/* Attendance history */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-lg">
           <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
             <h2 className="font-semibold text-sm text-slate-300 uppercase tracking-wider">Attendance History</h2>
             <span className="bg-blue-600/30 text-blue-300 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-500/30">
@@ -94,7 +114,7 @@ export default function StudentDashboard() {
             <div className="p-12 text-center space-y-2">
               <p className="text-4xl">📋</p>
               <p className="text-slate-400 text-sm">No attendance records yet.</p>
-              <p className="text-slate-500 text-xs">Scan a QR code in class to check in.</p>
+              <p className="text-slate-500 text-xs">Enter a class code to check in.</p>
             </div>
           ) : (
             <ul className="divide-y divide-white/5">
