@@ -23,11 +23,12 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, start_time, end_time } = body;
+  // Ensure is_active is pulled from the body (it defaults to true if missing)
+  const { name, start_time, end_time, is_active = true } = body;
 
   const { data, error } = await supabaseAdmin
     .from('shifts')
-    .insert({ name, start_time, end_time, is_active: true })
+    .insert({ name, start_time, end_time, is_active })
     .select()
     .single();
 
