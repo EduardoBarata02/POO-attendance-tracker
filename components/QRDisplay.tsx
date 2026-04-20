@@ -85,17 +85,16 @@ export default function QRDisplay({ shiftId, shiftName }: QRDisplayProps) {
         {state === 'active' && token ? (
           <QRCodeSVG
             value={checkInUrl}
-            size={280}
-            level="H" // High error correction for logo overlay
-            includeMargin={false}
-            imageSettings={{
-              src: '/ist-logo.png', // Add your IST logo to /public
-              x: undefined,
-              y: undefined,
+            size={400}             // 1. Make it much bigger
+            level="H"
+            includeMargin={true}   // 2. Add the mandatory white border
+            // 3. Temporarily comment out the imageSettings to ensure the logo isn't breaking it
+            /* imageSettings={{
+              src: '/ist-logo.png',
               height: 48,
               width: 48,
               excavate: true,
-            }}
+            }} */
           />
         ) : state === 'loading' ? (
           <div className="w-[280px] h-[280px] flex items-center justify-center">
