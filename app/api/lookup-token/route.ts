@@ -1,23 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-
-declare global {
-  // eslint-disable-next-line no-var
-  var __activeTokens: Map<string, { token: string; expiresAt: number }> | undefined;
-}
-globalThis.__activeTokens ??= new Map();
-
-export function registerToken(code: string, token: string) {
-  globalThis.__activeTokens!.set(code.toUpperCase(), {
-    token,
-    expiresAt: Date.now() + 15_000,
-  });
-  
-  for (const [k, v] of globalThis.__activeTokens!.entries()) {
-    if (v.expiresAt < Date.now()) globalThis.__activeTokens!.delete(k);
-  }
-}
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -30,10 +14,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Code is required.' }, { status: 400 });
   }
 
-  const entry = globalThis.__activeTokens!.get(code.toUpperCase().trim());
-  if (!entry || entry.expiresAt < Date.now()) {
+  const cleanCode = code.toUpperCase().trim();
+
+  // Look for the code in Supabase
+  const { data: entry, error } = await supabaseAdmin
+    .from('active_codes')
+    .select('token, expires_at')
+    .eq('code', cleanCode)
+    .single();
+
+  // Check if it exists and hasn't expired
+  if (error || !entry || new Date(entry.expires_at).getTime() < Date.now()) {
     return NextResponse.json(
-      { error: 'Code not found or expired. Please check the code on the projector and try again.' },
+      { error: 'Code not found or expired. Please check the code on the projector.' },
       { status: 404 }
     );
   }

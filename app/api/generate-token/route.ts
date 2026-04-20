@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import jwt from 'jsonwebtoken';
 import { authOptions } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
-import { registerToken } from '@/app/api/lookup-token/route';
 
 // Generates a 6-char alphanumeric code — uppercase only to avoid 0/O, 1/I confusion
 function generateShortCode(): string {
@@ -55,8 +54,12 @@ export async function POST(req: NextRequest) {
     { expiresIn: '15s' }
   );
 
-  // Register the code in memory so the student can look it up
-  registerToken(code, token);
+  // Save the code and token to Supabase for 15 seconds
+  await supabaseAdmin.from('active_codes').upsert({
+    code: code,
+    token: token,
+    expires_at: new Date(Date.now() + 15000).toISOString()
+  });
 
   return NextResponse.json({ token, code });
 }
