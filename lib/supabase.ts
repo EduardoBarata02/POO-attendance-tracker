@@ -1,23 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Server-side only — uses service role key (bypasses RLS)
 export const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
+  { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
 export type Shift = {
   id: string;
   name: string;
+  code: string;
   start_time: string;
   end_time: string;
   is_active: boolean;
+  created_at: string;
 };
 
 export type AttendanceRecord = {
