@@ -14,6 +14,9 @@ export default function TeacherPage() {
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
   const [toggling, setToggling] = useState(false);
+  
+  // New state for the dropdown selector
+  const [shiftFilter, setShiftFilter] = useState<'this_week' | 'archived' | 'all'>('this_week');
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/');
@@ -66,6 +69,24 @@ export default function TeacherPage() {
     );
   }
 
+  // --- Dynamic Filtering Logic ---
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  const day = startOfWeek.getDay() || 7; 
+  startOfWeek.setDate(now.getDate() - (day - 1));
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const filteredShifts = shifts.filter((s) => {
+    const shiftDate = new Date(s.start_time || s.created_at);
+    if (shiftFilter === 'this_week') {
+      return s.is_active || shiftDate >= startOfWeek;
+    }
+    if (shiftFilter === 'archived') {
+      return !s.is_active && shiftDate < startOfWeek;
+    }
+    return true; // 'all'
+  }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white">
       {/* Nav */}
@@ -82,16 +103,17 @@ export default function TeacherPage() {
         </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Back to a clean 3-column grid */}
+      <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Left — shift list */}
+        {/* Left Column — Create & List */}
         <div className="space-y-4">
           {/* Create */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">New Shift</h2>
             <input
               type="text"
-              placeholder="e.g. Lecture A · Week 5"
+              placeholder="e.g. Lab Fri 01/01 12:00"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && createShift()}
@@ -106,22 +128,39 @@ export default function TeacherPage() {
             </button>
           </div>
 
-          {/* List */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/10">
-              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">All Shifts</h2>
+          {/* List with Selector */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-white/10 space-y-3 bg-white/[0.02]">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Shifts</h2>
+                <span className="bg-blue-600/30 text-blue-300 text-xs font-bold px-2 py-0.5 rounded-full">
+                  {filteredShifts.length}
+                </span>
+              </div>
+              
+              {/* The Dropdown Selector */}
+              <select
+                value={shiftFilter}
+                onChange={(e) => setShiftFilter(e.target.value as any)}
+                className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value="this_week">This Week & Active</option>
+                <option value="archived">Archived (Past Weeks)</option>
+                <option value="all">All Shifts</option>
+              </select>
             </div>
-            {shifts.length === 0 ? (
-              <p className="text-slate-500 text-sm text-center py-10">No shifts yet.</p>
+
+            {filteredShifts.length === 0 ? (
+              <p className="text-slate-500 text-sm text-center py-10">No shifts match this filter.</p>
             ) : (
-              <ul className="divide-y divide-white/5 max-h-[480px] overflow-y-auto">
-                {shifts.map((shift) => (
+              <ul className="divide-y divide-white/5 max-h-[400px] overflow-y-auto">
+                {filteredShifts.map((shift) => (
                   <li
                     key={shift.id}
                     onClick={() => setSelected(shift)}
                     className={`flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors gap-3 ${
                       selected?.id === shift.id ? 'bg-blue-600/20 border-l-2 border-blue-500 pl-3.5' : ''
-                    }`}
+                    } ${!shift.is_active && shiftFilter === 'all' ? 'opacity-70' : ''}`}
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-white truncate">{shift.name}</p>
@@ -141,7 +180,7 @@ export default function TeacherPage() {
           </div>
         </div>
 
-        {/* Center — selected shift detail */}
+        {/* Center Column — Selected shift detail */}
         <div className="space-y-4">
           {selected ? (
             <>
@@ -152,20 +191,22 @@ export default function TeacherPage() {
                   <p className="text-white font-bold text-xl truncate">{selected.name}</p>
                 </div>
 
-                {/* The code itself */}
-                <div className={`bg-white rounded-2xl px-10 py-6 text-center w-full shadow-xl ${
+                <div className={`bg-white rounded-2xl py-8 flex flex-col items-center justify-center w-full shadow-xl ${
                   !selected.is_active ? 'opacity-40 grayscale' : ''
                 }`}>
-                  <p className="font-mono font-bold text-5xl tracking-[0.2em] text-slate-800 select-all">
-                    {((selected as any).code as string).slice(0, 3)}
-                    <span className="text-slate-300 mx-1">·</span>
-                    {((selected as any).code as string).slice(3)}
-                  </p>
-                  <p className="text-slate-400 text-xs mt-3">
+                  <div className="flex items-center justify-center text-5xl font-mono font-bold text-slate-800 select-all">
+                    <span className="tracking-[0.2em] pl-[0.2em]">
+                      {((selected as any).code as string).slice(0, 3)}
+                    </span> 
+                    <span className="text-slate-300 mx-2 pb-1">·</span>
+                    <span className="tracking-[0.2em] pl-[0.2em]">
+                      {((selected as any).code as string).slice(3)}
+                    </span>
+                  </div>                  
+                  <p className="text-slate-400 text-xs mt-4 text-center px-4">
                     {selected.is_active ? 'Students enter this code in the app' : 'Enrollments stopped — code is inactive'}
                   </p>
                 </div>
-
                 {/* Toggle button */}
                 <button
                   onClick={toggleEnrollments}
@@ -211,18 +252,18 @@ export default function TeacherPage() {
               </div>
             </>
           ) : (
-            <div className="bg-white/5 border border-dashed border-white/20 rounded-2xl p-12 text-center">
-              <p className="text-slate-500 text-sm">Select a shift on the left to see its code and attendance.</p>
+            <div className="bg-white/5 border border-dashed border-white/20 rounded-2xl p-12 text-center flex flex-col justify-center min-h-[300px]">
+              <p className="text-slate-500 text-sm">Select a shift on the left to see its code.</p>
             </div>
           )}
         </div>
 
-        {/* Right — attendance list */}
+        {/* Right Column — Attendance list */}
         <div>
           {selected ? (
             <AttendanceList shiftId={selected.id} />
           ) : (
-            <div className="bg-white/5 border border-dashed border-white/20 rounded-2xl p-12 text-center">
+            <div className="bg-white/5 border border-dashed border-white/20 rounded-2xl p-12 text-center flex flex-col justify-center min-h-[300px]">
               <p className="text-slate-500 text-sm">Select a shift to see who checked in.</p>
             </div>
           )}

@@ -71,6 +71,83 @@ export default function StudentDashboard() {
   const istId = (session?.user as any)?.istId ?? '';
   const userName = session?.user?.name ?? '';
   const userImage = session?.user?.image ?? null;
+  const getCurrentStreak = () => {
+    if (!records || records.length === 0) return 0;
+
+    // Monday of the first week of classes (Week 0)
+    const startOfSemester = new Date('2026-04-20T00:00:00').getTime();
+    const oneWeekMs = 1000 * 60 * 60 * 24 * 7;
+    
+    // 1. Group the student's records by week
+    const weeklyCounts: Record<number, number> = {};
+    records.forEach((r) => {
+      const shiftDate = r.shifts?.start_time ? new Date(r.shifts.start_time).getTime() : new Date(r.timestamp).getTime();
+      const weekIndex = Math.floor((shiftDate - startOfSemester) / oneWeekMs);
+      weeklyCounts[weekIndex] = (weeklyCounts[weekIndex] || 0) + 1;
+    });
+
+    const now = new Date();
+    const currentWeekIndex = Math.floor((now.getTime() - startOfSemester) / oneWeekMs);
+    const currentDayOfWeek = now.getDay(); // 0: Sun, 1: Mon, ..., 5: Fri, 6: Sat
+    
+    let streak = 0;
+    
+    // --- CALENDAR RULES ---
+    // Week 0 is Apr 20. Week 1 is Apr 27.
+    const getExpectedLabsForWeek = (weekIdx: number) => {
+      // Exception: Week 1 (April 27 - May 3) has a holiday on Friday (May 1st)
+      if (weekIdx === 0) return 1;
+      if (weekIdx === 1) return 1;     
+      
+      return 2; // Standard week expects 2 labs
+    };
+
+    // 2. Count backwards from the current week
+    for (let i = currentWeekIndex; i >= 0; i--) {
+      const count = weeklyCounts[i] || 0;
+      const totalExpectedForWeek = getExpectedLabsForWeek(i);
+      
+      if (i === currentWeekIndex) {
+        // --- CURRENT WEEK GRACE PERIOD ---
+        // We don't want to break a student's streak on Wednesday if their lab is on Thursday!
+        let expectedByToday = 0;
+        
+        if (totalExpectedForWeek === 2) {
+          // Lab 1 is Wed/Thu. By Friday morning, EVERYONE should have 1.
+          if (currentDayOfWeek === 5) expectedByToday = 1; 
+          // Lab 2 is Thu/Fri. By the weekend, EVERYONE should have 2.
+          if (currentDayOfWeek === 6 || currentDayOfWeek === 0) expectedByToday = 2; 
+        } else if (totalExpectedForWeek === 1) {
+          // Only 1 lab this week (Wed/Thu). By the weekend, everyone should have 1.
+          if (currentDayOfWeek === 6 || currentDayOfWeek === 0) expectedByToday = 1;
+        }
+
+        // If they finished the week's requirement early, increment streak immediately!
+        if (count >= totalExpectedForWeek) {
+          streak++;
+        } 
+        // If they missed a class that ALREADY happened for everyone, the streak breaks.
+        else if (count < expectedByToday) {
+          break; 
+        }
+        // Otherwise (e.g., it's Wednesday, they have 0, but expected is 0), 
+        // they are ON TRACK. We don't break the streak, we just keep checking past weeks.
+        
+      } else {
+        // --- PAST WEEKS LOGIC ---
+        // The week is over. They MUST have met the exact required amount.
+        if (count >= totalExpectedForWeek) {
+          streak++;
+        } else {
+          break; // The chain is broken!
+        }
+      }
+    }
+    
+    return streak;
+  };
+
+  const currentStreak = getCurrentStreak();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white">
@@ -133,15 +210,28 @@ export default function StudentDashboard() {
         </a>
 
         {/* Attendance history */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-            <h2 className="font-semibold text-sm text-slate-300 uppercase tracking-wider">
-              Attendance History
-            </h2>
-            <span className="bg-blue-600/30 text-blue-300 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-500/30">
+        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-4 border-b border-white/10 bg-white/[0.02] gap-3 sm:gap-0">
+          <h2 className="font-semibold text-sm text-slate-300 uppercase tracking-wider">
+            Attendance History
+          </h2>
+          <div className="flex items-center gap-3">
+            {currentStreak > 0 ? (
+              <span className="inline-flex items-center gap-1.5 bg-orange-500/10 text-orange-400 text-xs font-bold px-3 py-1 rounded-full border border-orange-500/30 shadow-[0_0_12px_rgba(249,115,22,0.15)] transition-all hover:shadow-[0_0_16px_rgba(249,115,22,0.25)] cursor-default">
+                <span className="animate-pulse">🔥</span> 
+                {currentStreak}-Week Streak!
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 bg-slate-800/60 text-slate-400 text-xs font-medium px-3 py-1 rounded-full border border-white/10 cursor-default">
+                <span className="opacity-50 text-[10px]">❄️</span> 
+                No active streak
+              </span>
+            )}
+            <span className="bg-blue-600/20 text-blue-300 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-500/20">
               {records.length} {records.length === 1 ? 'record' : 'records'}
             </span>
           </div>
+        </div>  
 
           {loading ? (
             <div className="p-12 flex justify-center">

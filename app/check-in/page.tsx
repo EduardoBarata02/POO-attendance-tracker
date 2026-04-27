@@ -125,8 +125,15 @@ function CheckInContent() {
               Checking in...
             </>
           ) : 'Check In'}
-        </button>
+        </button>        
       </div>
+       <div className="text-center">
+          <p className="text-white font-semibold text-sm">
+            <a href="/dashboard" className="text-blue-100 hover:text-blue-300 transition-colors">
+              Go back to Dashboard
+            </a>
+          </p>
+        </div>
 
       {status !== 'idle' && status !== 'loading' && (
         <div className={`w-full rounded-2xl p-5 flex items-start gap-4 border ${colorMap[feedback[status].color]}`}>
